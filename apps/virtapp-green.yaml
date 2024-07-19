@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: virtapp-green
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    namespace: virtapp
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    helm:
+      values: |
+        replicaCount: 1
+        image:
+          repository: ossyberp/virtapp
+          pullPolicy: IfNotPresent
+          tag: green
+        ingress:
+          enabled: yes
+          annotations: 
+            kubernetes.io/ingress.class: nginx
+            cert-manager.io/cluster-issuer: letsencrypt-dev
+          hosts:
+            - host: virtapp-green.gonzalolopez.xyz
+              paths:
+                - path: /
+                  pathType: ImplementationSpecific
+          tls:
+              - hosts:
+                  - virtapp-green.gonzalolopez.xyz
+                secretName: tls-virtasant-green
+        resources: 
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+      version: v3
+    repoURL: git@github.com:gmlp/virt-web-app-chart.git
+    targetRevision: "1.0.0"
+    path: "."
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5 # number of failed sync attempt retries; unlimited number of attempts if less than 0
+      backoff:
+        duration: 5s # the amount to back off. Default unit is seconds, but could also be a duration (e.g. "2m", "1h")
+        factor: 2 # a factor to multiply the base duration after each failed retry
+        maxDuration: 3m # the maximum amount of time allowed for the backoff strategy
